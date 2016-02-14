@@ -55,7 +55,7 @@ for property in $(ls -d */ | grep -oh '^P[0-9]\+' ); do
     echo "| [$url $total]"
 
     url=$baseurl/$property/counts.csv
-    if [ "$(wc -l $histogram)" == "1 "* ]; then
+    if [ "$(wc -l < $histogram)" == "1" ]; then
         echo "| unique"
     else
         echo "| [$url multiple]"
@@ -63,9 +63,9 @@ for property in $(ls -d */ | grep -oh '^P[0-9]\+' ); do
 
     url=$baseurl/$property/values.txt
     if [ -s $values ]; then
-        echo "| unique"
-    else
         echo "| [$url multiple]"
+    else
+        echo "| unique"
     fi 
 
 done
