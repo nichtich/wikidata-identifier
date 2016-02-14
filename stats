@@ -1,0 +1,73 @@
+#!/bin/bash
+
+#
+# This shell script downloads "truthy" Wikidata statements for all properties
+# (each given as a directory name) and does some statistics. It generates
+#
+# For each property it generates the following files:
+# 
+# - links.csv - all truthy statements
+# - counts.csv - number of statements for each item
+# - histogram.csv - histogram of number of statements per item
+# - values - list of values linked by multiple items
+#
+# Downloading statements requires the command line client 'wdq' (cpanm App::wdq)
+#
+
+# utility function to count unique first CSV fields (must be sorted)
+function uniqcsv { awk -F, '{print $1}' | uniq -c; } 
+
+baseurl=https://github.com/nichtich/wikidata-identifier/blob/master
+
+echo '{| class="wikitable sortable"'
+echo '|-'
+echo '!Property'
+echo '!Total uses'
+echo '!values per item'
+echo '!items per value'
+
+for property in $(ls -d */ | grep -oh '^P[0-9]\+' ); do
+
+    # truthy statements
+    links=$property/links.csv
+    
+    # download links
+    [ -e $links ] || wdq -fcsv -H -i "?item wdt:$property ?value" > $links
+
+    # number of links per item
+    counts=$property/counts.csv
+    cat $links | uniqcsv | sort -nk1 | awk '{ print $1 "," $2}' > $counts 
+
+    # histogram
+    histogram=$property/histogram.csv
+    cat $counts | uniqcsv | awk '{ print $2 "," $1}' > $histogram
+
+    # values linked by multiple items
+    values=$property/values.txt
+    cat $links | sed 's/^Q[0-9]\+,//' | sort | uniq -c | sort -nk1 | \
+        grep -v '^\s\+1' > $values     
+
+    echo '|-'
+    echo "| {{P|$property}}"
+
+    total=$(wc -l < $links)
+    url=$baseurl/$property/links.csv
+    echo "| [$url $total]"
+
+    url=$baseurl/$property/counts.csv
+    if [ "$(wc -l $histogram)" == "1 "* ]; then
+        echo "| unique"
+    else
+        echo "| [$url multiple]"
+    fi 
+
+    url=$baseurl/$property/values.txt
+    if [ -s $values ]; then
+        echo "| unique"
+    else
+        echo "| [$url multiple]"
+    fi 
+
+done
+
+echo '|}'
